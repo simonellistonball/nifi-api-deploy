@@ -50,25 +50,25 @@ def loadProcessGroups() {
   }
 }
 
-def handleProcessGroup(Map.Entry config) {
-  //println config
+def handleProcessGroup(Map.Entry pgConfig) {
+  //println pgConfig
 
-  if (!config.value) {
+  if (!pgConfig.value) {
     return
   }
 
-  // read the desired config
+  // read the desired pgConfig
   // locate the processor according to the nesting structure in YAML
   // (intentionally not using 'search')
-  // update via a partial PUT constructed from the config
+  // update via a partial PUT constructed from the pgConfig
 
   updateToLatestRevision()
 
-  def pgName = config.key
+  def pgName = pgConfig.key
   def pgId = processGroups[pgName]
-  assert pgId : "Processing Group '$pgName' not found in this instance, check your deployment config?"
-  println "Process Group: $config.key ($pgId)"
-  println config
+  assert pgId : "Processing Group '$pgName' not found in this instance, check your deployment pgConfig?"
+  println "Process Group: $pgConfig.key ($pgId)"
+  println pgConfig
 
   // load processors in this group
   resp = nifi.get(path: "controller/process-groups/$pgId/processors")
@@ -79,26 +79,56 @@ def handleProcessGroup(Map.Entry config) {
     [(it.name): [it.id, it.uri]]
   }
 
-  config.value.processors.each { proc ->
+  pgConfig.value.processors.each { proc ->
     // check for any duplicate processors in the remote NiFi instance
     def result = processors.findAll { remote -> remote.key == proc.key }
     assert result.entrySet().size() == 1 : "Ambiguous processor name '$proc.key'"
 
+    def procId = processors[proc.key][0]
+
+    println "Stopping Processor '$proc.key' ($procId)"
+    stopProcessor(pgId, procId)
+
     println proc.value.config.entrySet()
+    def procProps = proc.value.config.entrySet()
 
     def builder = new JsonBuilder()
     builder {
         revision {
-            clientId client
-            version currentRevision
+          clientId client
+          version currentRevision
         }
         processor {
-            id processors[proc.key][0]
-            state proc.value.state
+          id procId
+
+          config {
+            properties {
+              procProps.each { p ->
+                "$p.key" p.value
+              }
+            }
+          }
         }
+
     }
 
     println builder.toPrettyString()
+
+    updateToLatestRevision()
+
+    resp = nifi.put (
+      path: "controller/process-groups/$pgId/processors/$procId",
+      body: builder.toPrettyString(),
+      requestContentType: JSON
+    )
+    assert resp.status == 200
+
+
+    // check if pgConfig tells us to start this processor
+    if (proc.value.state == 'RUNNING') {
+      println "Will start it up next"
+      updateToLatestRevision()
+    }
   }
 }
 
@@ -155,4 +185,27 @@ def updateToLatestRevision() {
     )
     assert resp.status == 200
     currentRevision = resp.data.revision.version
+}
+
+def stopProcessor(processGroupId, processorId) {
+  def builder = new JsonBuilder()
+  builder {
+      revision {
+          clientId client
+          version currentRevision
+      }
+      processor {
+          id processorId
+          state 'STOPPED'
+      }
+  }
+
+  //println builder.toPrettyString()
+  resp = nifi.put (
+    path: "controller/process-groups/$processGroupId/processors/$processorId",
+    body: builder.toPrettyString(),
+    requestContentType: JSON
+  )
+  assert resp.status == 200
+  currentRevision = resp.data.revision.version
 }
