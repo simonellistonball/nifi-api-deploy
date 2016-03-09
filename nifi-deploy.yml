@@ -1,5 +1,6 @@
 nifi:
   url: http://192.168.99.103:9091
+  clientId: Deployment Script v1
 
 controllerServices:
   StandardHttpContextMap:
