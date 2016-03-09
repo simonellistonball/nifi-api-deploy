@@ -9,7 +9,7 @@ controllerServices:
 processGroups:
   root: ~
 
-  Hello Nifi Web Service:
+  Hello NiFi Web Service:
     processors:
       Receive request and data:
         state: RUNNING
