@@ -5,7 +5,7 @@ import org.yaml.snakeyaml.Yaml
 def config = new Yaml().load(new File('nifi-deploy.yml').text)
 assert config
 
-assert config.nifi,url == 'http://192.168.99.103:9091'
+assert config.nifi.url == 'http://192.168.99.103:9091'
 
 assert 'ENABLED' == config.controllerServices.StandardHttpContextMap.state
 
