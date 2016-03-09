@@ -1,0 +1,16 @@
+nifi:
+  url: http://192.168.99.103:9091
+
+controllerServices:
+  StandardHttpContextMap:
+    state: ENABLED
+
+processGroups:
+  - root:
+
+  - Hello Nifi Web Service:
+      processors:
+        Receive request and data:
+          state: RUNNING
+          config:
+            Listening Port: 8000
