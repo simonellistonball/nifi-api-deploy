@@ -11,7 +11,7 @@ assert 'ENABLED' == config.controllerServices.StandardHttpContextMap.state
 
 assert config.processGroups.size() == 2
 
-def pg = config.processGroups['Hello Nifi Web Service']
+def pg = config.processGroups['Hello NiFi Web Service']
 assert pg.processors.entrySet().size() == 1
 
 def p =  pg.processors.entrySet()[0]
