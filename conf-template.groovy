@@ -18,6 +18,7 @@ conf = new Yaml().load(new File('nifi-deploy.yml').text)
 assert conf
 
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
+client = conf.nifi.clientId
 
 processGroups = [:]
 loadProcessGroups()
@@ -50,6 +51,56 @@ def loadProcessGroups() {
 def handleProcessGroup(Map.Entry config) {
   //println config
 
+  if (!config.value) {
+    return
+  }
+
+  // read the desired config
+  // locate the processor according to the nesting structure in YAML
+  // (intentionally not using 'search')
+  // update via a partial PUT constructed from the config
+
+  def resp = nifi.get(
+      path: 'controller/revision'
+  )
+  assert resp.status == 200
+
+  def pgName = config.key
+  def pgId = processGroups[pgName]
+  assert pgId : "Processing Group '$pgName' not found in this instance, check your deployment config?"
+  println "Process Group: $config.key ($pgId)"
+  println config
+
+  // load processors in this group
+  resp = nifi.get(path: "controller/process-groups/$pgId/processors")
+  assert resp.status == 200
+  def version = resp.data.revision.version
+  // construct a quick map of "procName -> [id, fullUri]"
+  def processors = resp.data.processors.collectEntries {
+    [(it.name): [it.id, it.uri]]
+  }
+
+  config.value.processors.each { proc ->
+    // check for any duplicate processors in the remote NiFi instance
+    def result = processors.findAll { remote -> remote.key == proc.key }
+    assert result.entrySet().size() == 1 : "Ambiguous processor name '$proc.key'"
+
+    println proc.value.config.entrySet()
+
+    def builder = new JsonBuilder()
+    builder {
+        revision {
+            clientId client
+            version resp.data.revision.version
+        }
+        processor {
+            id processors[proc.key][0]
+            state proc.value.state
+        }
+    }
+
+    println builder.toPrettyString()
+  }
 }
 
 def handleControllerService(Map.Entry config) {
@@ -83,7 +134,7 @@ def handleControllerService(Map.Entry config) {
   def builder = new JsonBuilder()
   builder {
       revision {
-          clientId 'deployment script v1.0'
+          clientId client
           version resp.data.revision.version
       }
       controllerService {
