@@ -68,7 +68,7 @@ def handleProcessGroup(Map.Entry pgConfig) {
   def pgId = processGroups[pgName]
   assert pgId : "Processing Group '$pgName' not found in this instance, check your deployment pgConfig?"
   println "Process Group: $pgConfig.key ($pgId)"
-  println pgConfig
+  //println pgConfig
 
   // load processors in this group
   resp = nifi.get(path: "controller/process-groups/$pgId/processors")
@@ -89,7 +89,6 @@ def handleProcessGroup(Map.Entry pgConfig) {
     println "Stopping Processor '$proc.key' ($procId)"
     stopProcessor(pgId, procId)
 
-    println proc.value.config.entrySet()
     def procProps = proc.value.config.entrySet()
 
     def builder = new JsonBuilder()
@@ -100,7 +99,6 @@ def handleProcessGroup(Map.Entry pgConfig) {
         }
         processor {
           id procId
-
           config {
             properties {
               procProps.each { p ->
@@ -112,6 +110,7 @@ def handleProcessGroup(Map.Entry pgConfig) {
 
     }
 
+    println "Applying processor configuration"
     println builder.toPrettyString()
 
     updateToLatestRevision()
@@ -128,6 +127,9 @@ def handleProcessGroup(Map.Entry pgConfig) {
     if (proc.value.state == 'RUNNING') {
       println "Will start it up next"
       updateToLatestRevision()
+      startProcessor(pgId, procId)
+    } else {
+      println "Processor wasn't configured to be running, not starting it up"
     }
   }
 }
@@ -188,6 +190,14 @@ def updateToLatestRevision() {
 }
 
 def stopProcessor(processGroupId, processorId) {
+  _changeProcessorState(processGroupId, processorId, false)
+}
+
+def startProcessor(processGroupId, processorId) {
+  _changeProcessorState(processGroupId, processorId, true)
+}
+
+private _changeProcessorState(processGroupId, processorId, boolean running) {
   def builder = new JsonBuilder()
   builder {
       revision {
@@ -196,15 +206,15 @@ def stopProcessor(processGroupId, processorId) {
       }
       processor {
           id processorId
-          state 'STOPPED'
+          state running ? 'RUNNING' : 'STOPPED'
       }
   }
 
   //println builder.toPrettyString()
   resp = nifi.put (
-    path: "controller/process-groups/$processGroupId/processors/$processorId",
-    body: builder.toPrettyString(),
-    requestContentType: JSON
+          path: "controller/process-groups/$processGroupId/processors/$processorId",
+          body: builder.toPrettyString(),
+          requestContentType: JSON
   )
   assert resp.status == 200
   currentRevision = resp.data.revision.version
