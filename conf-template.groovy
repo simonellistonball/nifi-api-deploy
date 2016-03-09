@@ -5,36 +5,52 @@ import static groovy.json.JsonOutput.prettyPrint
 import static groovy.json.JsonOutput.toJson
 import static groovyx.net.http.ContentType.JSON
 
+import org.yaml.snakeyaml.Yaml
+
 @Grab(group='org.codehaus.groovy.modules.http-builder',
-        module='http-builder',
-        version='0.7.1')
+      module='http-builder',
+      version='0.7.1')
+@Grab(group='org.yaml',
+      module='snakeyaml',
+      version='1.17')
 
-// you would extract that as an external config file and
-// read via e.g. a ConfigSlurper():
-//
-// def conf = new ConfigSlurper('nifi-deployment-properties.groovy')
-//
-def confInline = '''
-nifi {
-  url = 'http://192.168.99.103:9091'
-}
+conf = new Yaml().load(new File('nifi-deploy.yml').text)
+assert conf
 
-controllerServices {
-  StandardHttpContextMap {
-    state = 'ENABLED'
-  }
-}
-'''
-
-conf = new ConfigSlurper().parse(confInline)
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
+
+processGroups = [:]
+loadProcessGroups()
 
 println "Configuring Controller Services"
 
+// controller services are dependencies of processors,
+// configure them first
 conf.controllerServices.each { handleControllerService(it) }
+
+println "Configuring Process Groups and Processors"
+conf.processGroups.each { handleProcessGroup(it) }
 
 println 'All Done.'
 
+
+
+def loadProcessGroups() {
+  println "Loading Process Groups from NiFi"
+  def resp = nifi.get(
+    path: 'controller/process-groups/root/process-group-references'
+  )
+  assert resp.status == 200
+  // println resp.data
+  processGroups = resp.data.processGroups.collectEntries {
+    [(it.name): it.id]
+  }
+}
+
+def handleProcessGroup(Map.Entry config) {
+  //println config
+
+}
 
 def handleControllerService(Map.Entry config) {
   //println config
