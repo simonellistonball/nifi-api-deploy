@@ -20,6 +20,8 @@ assert conf
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
 client = conf.nifi.clientId
 
+currentRevision = -1 // used for optimistic concurrency throughout the REST API
+
 processGroups = [:]
 loadProcessGroups()
 
@@ -60,10 +62,7 @@ def handleProcessGroup(Map.Entry config) {
   // (intentionally not using 'search')
   // update via a partial PUT constructed from the config
 
-  def resp = nifi.get(
-      path: 'controller/revision'
-  )
-  assert resp.status == 200
+  updateToLatestRevision()
 
   def pgName = config.key
   def pgId = processGroups[pgName]
@@ -74,7 +73,7 @@ def handleProcessGroup(Map.Entry config) {
   // load processors in this group
   resp = nifi.get(path: "controller/process-groups/$pgId/processors")
   assert resp.status == 200
-  def version = resp.data.revision.version
+
   // construct a quick map of "procName -> [id, fullUri]"
   def processors = resp.data.processors.collectEntries {
     [(it.name): [it.id, it.uri]]
@@ -91,7 +90,7 @@ def handleProcessGroup(Map.Entry config) {
     builder {
         revision {
             clientId client
-            version resp.data.revision.version
+            version currentRevision
         }
         processor {
             id processors[proc.key][0]
@@ -118,10 +117,7 @@ def handleControllerService(Map.Entry config) {
   def cs = resp.data.controllerServices.find { it.name == name }
   assert cs != null
 
-  // get the flow revision number to perform update
-  resp = nifi.get(
-      path: 'controller/revision'
-  )
+  updateToLatestRevision()
   assert resp.status == 200
 
   println "Found the controller service '$cs.name'. Current state is ${cs.state}."
@@ -135,7 +131,7 @@ def handleControllerService(Map.Entry config) {
   builder {
       revision {
           clientId client
-          version resp.data.revision.version
+          version currentRevision
       }
       controllerService {
           id "$cs.id"
@@ -151,4 +147,12 @@ def handleControllerService(Map.Entry config) {
       requestContentType: JSON
   )
   assert resp.status == 200
+}
+
+def updateToLatestRevision() {
+    def resp = nifi.get(
+            path: 'controller/revision'
+    )
+    assert resp.status == 200
+    currentRevision = resp.data.revision.version
 }
