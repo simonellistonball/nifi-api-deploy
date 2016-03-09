@@ -50,6 +50,12 @@ def loadProcessGroups() {
   }
 }
 
+/**
+ - read the desired pgConfig
+ - locate the processor according to the nesting structure in YAML
+   (intentionally not using 'search') to pick up a specific PG->Proc
+ - update via a partial PUT constructed from the pgConfig
+*/
 def handleProcessGroup(Map.Entry pgConfig) {
   //println pgConfig
 
@@ -57,10 +63,7 @@ def handleProcessGroup(Map.Entry pgConfig) {
     return
   }
 
-  // read the desired pgConfig
-  // locate the processor according to the nesting structure in YAML
-  // (intentionally not using 'search')
-  // update via a partial PUT constructed from the pgConfig
+
 
   updateToLatestRevision()
 
