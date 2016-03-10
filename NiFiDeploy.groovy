@@ -7,6 +7,7 @@ import org.yaml.snakeyaml.Yaml
 import static groovy.json.JsonOutput.prettyPrint
 import static groovy.json.JsonOutput.toJson
 import static groovyx.net.http.ContentType.JSON
+import static groovyx.net.http.ContentType.URLENC
 import static groovyx.net.http.Method.POST
 
 
@@ -27,10 +28,12 @@ assert conf
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
 client = conf.nifi.clientId
 
+currentRevision = -1 // used for optimistic concurrency throughout the REST API
+
 templateId = null // will be assigned on import into NiFi
 importTemplate(conf.nifi.templateUri)
+instantiateTemplate(templateId)
 
-currentRevision = -1 // used for optimistic concurrency throughout the REST API
 
 processGroups = [:]
 loadProcessGroups()
@@ -65,6 +68,7 @@ def importTemplate(String templateUri) {
         switch (resp.statusLine.statusCode) {
             case 200:
                 println "[WARN] Template already exists, skipping for now"
+                // TODO delete template, CS and, maybe a PG
                 break
             case 201:
                 // grab the trailing UUID part of the location URL header
@@ -80,6 +84,23 @@ def importTemplate(String templateUri) {
 
     }
   }
+}
+
+def instantiateTemplate(String id) {
+  updateToLatestRevision()
+  def resp = nifi.post (
+    path: 'controller/process-groups/root/template-instance',
+    body: [
+      templateId: id,
+      // TODO add slight randomization to the XY to avoid hiding PG behind each other
+      originX: 100,
+      originY: 100,
+      version: currentRevision
+    ],
+    requestContentType: URLENC
+  )
+
+  assert resp.status == 201
 }
 
 def loadProcessGroups() {
