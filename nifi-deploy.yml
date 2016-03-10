@@ -23,4 +23,4 @@ processGroups:
       Receive request and data:
         state: RUNNING
         config:
-          Listening Port: 8000
+          Listening Port: 10000
