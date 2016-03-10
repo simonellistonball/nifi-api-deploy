@@ -6,7 +6,7 @@ def config = new Yaml().load(new File('nifi-deploy.yml').text)
 assert config
 
 assert config.nifi.url == 'http://192.168.99.103:9091'
-
+assert config.nifi.templateUri == 'https://cwiki.apache.org/confluence/download/attachments/57904847/Hello_NiFi_Web_Service.xml?version=1&modificationDate=1449369797000&api=v2'
 assert 'ENABLED' == config.controllerServices.StandardHttpContextMap.state
 
 assert config.processGroups.size() == 2

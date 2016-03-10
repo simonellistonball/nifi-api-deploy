@@ -1,6 +1,7 @@
 nifi:
   url: http://192.168.99.103:9091
   clientId: Deployment Script v1
+  templateUri: "https://cwiki.apache.org/confluence/download/attachments/57904847/Hello_NiFi_Web_Service.xml?version=1&modificationDate=1449369797000&api=v2"
 
 controllerServices:
   StandardHttpContextMap:

@@ -1,11 +1,15 @@
 import groovy.json.JsonBuilder
 import groovyx.net.http.RESTClient
+import org.apache.http.entity.mime.MultipartEntity
+import org.apache.http.entity.mime.content.StringBody
+import org.yaml.snakeyaml.Yaml
 
 import static groovy.json.JsonOutput.prettyPrint
 import static groovy.json.JsonOutput.toJson
 import static groovyx.net.http.ContentType.JSON
+import static groovyx.net.http.Method.POST
 
-import org.yaml.snakeyaml.Yaml
+
 
 @Grab(group='org.codehaus.groovy.modules.http-builder',
       module='http-builder',
@@ -13,12 +17,43 @@ import org.yaml.snakeyaml.Yaml
 @Grab(group='org.yaml',
       module='snakeyaml',
       version='1.17')
+@Grab(group='org.apache.httpcomponents',
+      module='httpmime',
+      version='4.2.1')
 
 conf = new Yaml().load(new File('nifi-deploy.yml').text)
 assert conf
 
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
 client = conf.nifi.clientId
+
+println "Loading template from URI: ${conf.nifi.templateUri}"
+def templateBody = conf.nifi.templateUri.toURL().text
+
+nifi.request(POST) { request ->
+  uri.path = '/nifi-api/controller/templates'
+
+  requestContentType = 'multipart/form-data'
+  MultipartEntity entity = new MultipartEntity()
+  entity.addPart("template", new StringBody(templateBody))
+  request.entity = entity
+
+  response.success = { resp, xml ->
+      switch (resp.statusLine.statusCode) {
+          case 200:
+              println "[WARN] Template already exists, skipping for now"
+              break
+          case 201:
+              println "Template successfully imported into NiFi"
+              break
+
+          default:
+              throw new Exception("Error importing template")
+              break
+      }
+
+  }
+}
 
 currentRevision = -1 // used for optimistic concurrency throughout the REST API
 
@@ -36,6 +71,8 @@ conf.processGroups.each { handleProcessGroup(it) }
 
 println 'All Done.'
 
+
+// implementation methods below
 
 
 def loadProcessGroups() {
@@ -69,7 +106,7 @@ def handleProcessGroup(Map.Entry pgConfig) {
 
   def pgName = pgConfig.key
   def pgId = processGroups[pgName]
-  assert pgId : "Processing Group '$pgName' not found in this instance, check your deployment pgConfig?"
+  assert pgId : "Processing Group '$pgName' not found in this instance, check your deployment config?"
   println "Process Group: $pgConfig.key ($pgId)"
   //println pgConfig
 
