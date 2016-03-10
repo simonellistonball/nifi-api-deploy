@@ -27,33 +27,7 @@ assert conf
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
 client = conf.nifi.clientId
 
-println "Loading template from URI: ${conf.nifi.templateUri}"
-def templateBody = conf.nifi.templateUri.toURL().text
-
-nifi.request(POST) { request ->
-  uri.path = '/nifi-api/controller/templates'
-
-  requestContentType = 'multipart/form-data'
-  MultipartEntity entity = new MultipartEntity()
-  entity.addPart("template", new StringBody(templateBody))
-  request.entity = entity
-
-  response.success = { resp, xml ->
-      switch (resp.statusLine.statusCode) {
-          case 200:
-              println "[WARN] Template already exists, skipping for now"
-              break
-          case 201:
-              println "Template successfully imported into NiFi"
-              break
-
-          default:
-              throw new Exception("Error importing template")
-              break
-      }
-
-  }
-}
+importTemplate(conf.nifi.templateUri)
 
 currentRevision = -1 // used for optimistic concurrency throughout the REST API
 
@@ -74,6 +48,35 @@ println 'All Done.'
 
 // implementation methods below
 
+def importTemplate(String templateUri) {
+  println "Loading template from URI: $templateUri"
+  def templateBody = templateUri.toURL().text
+
+  nifi.request(POST) { request ->
+    uri.path = '/nifi-api/controller/templates'
+
+    requestContentType = 'multipart/form-data'
+    MultipartEntity entity = new MultipartEntity()
+    entity.addPart("template", new StringBody(templateBody))
+    request.entity = entity
+
+    response.success = { resp, xml ->
+        switch (resp.statusLine.statusCode) {
+            case 200:
+                println "[WARN] Template already exists, skipping for now"
+                break
+            case 201:
+                println "Template successfully imported into NiFi"
+                break
+
+            default:
+                throw new Exception("Error importing template")
+                break
+        }
+
+    }
+  }
+}
 
 def loadProcessGroups() {
   println "Loading Process Groups from NiFi"
