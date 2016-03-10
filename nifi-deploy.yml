@@ -24,3 +24,7 @@ processGroups:
         state: RUNNING
         config:
           Listening Port: 10000
+
+      "Update Request Body with a greeting!":
+        config:
+          Replacement Value: Dynamically Configured NiFi!
