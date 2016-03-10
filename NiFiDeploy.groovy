@@ -67,18 +67,7 @@ def handleUndeploy() {
     // TODO not the best data structure, but should go away once we operate on a full json
     def id = pg.entrySet()[0].value
 
-    // stop the PG first
-    updateToLatestRevision()
-    def resp = nifi.put(
-      path: "controller/process-groups/root/process-group-references/$id",
-      body: [
-        running: false,
-        client: client,
-        version: currentRevision
-      ],
-      requestContentType: URLENC
-    )
-    assert resp.status == 200
+    stopProcessGroup(id)
 
     // now delete it
     updateToLatestRevision()
@@ -298,6 +287,9 @@ def handleProcessGroup(Map.Entry pgConfig) {
       println "Processor wasn't configured to be running, not starting it up"
     }
   }
+
+  println "Starting Process Group: $pgName ($pgId)"
+  startProcessGroup(pgId)
 }
 
 def handleControllerService(Map.Entry config) {
@@ -356,6 +348,28 @@ private _changeProcessorState(processGroupId, processorId, boolean running) {
   )
   assert resp.status == 200
   currentRevision = resp.data.revision.version
+}
+
+def startProcessGroup(pgId) {
+  _changeProcessGroupState(pgId, true)
+}
+
+def stopProcessGroup(pgId) {
+  _changeProcessGroupState(pgId, false)
+}
+
+private _changeProcessGroupState(pgId, boolean running) {
+  updateToLatestRevision()
+  def resp = nifi.put(
+    path: "controller/process-groups/root/process-group-references/$pgId",
+    body: [
+      running: running,
+      client: client,
+      version: currentRevision
+    ],
+    requestContentType: URLENC
+  )
+  assert resp.status == 200
 }
 
 def stopControllerService(csId) {
