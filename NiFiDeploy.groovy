@@ -55,6 +55,43 @@ def handleUndeploy() {
     }
   }
 
+  conf.nifi?.undeploy?.processGroups?.each { pgName ->
+    println "Undeploying Process Group: $pgName"
+    def pg = processGroups.findAll { it.key == pgName }
+    if (pg.isEmpty()) {
+      println "[WARN] No such process group found in NiFi"
+      return
+    }
+    assert pg.size() == 1 : "Ambiguous process group name"
+
+    // TODO not the best data structure, but should go away once we operate on a full json
+    def id = pg.entrySet()[0].value
+
+    // stop the PG first
+    updateToLatestRevision()
+    def resp = nifi.put(
+      path: "controller/process-groups/root/process-group-references/$id",
+      body: [
+        running: false,
+        client: client,
+        version: currentRevision
+      ],
+      requestContentType: URLENC
+    )
+    assert resp.status == 200
+
+    // now delete it
+    updateToLatestRevision()
+    resp = nifi.delete(
+      path: "controller/process-groups/root/process-group-references/$id",
+      query: [
+        clientId: client,
+        version: currentRevision
+      ]
+    )
+    assert resp.status == 200
+  }
+
   conf.nifi?.undeploy?.templates?.each { tName ->
     println "Deleting template: $tName"
     def t = lookupTemplate(tName)
@@ -173,6 +210,7 @@ def loadProcessGroups() {
   def resp = nifi.get(
     path: 'controller/process-groups/root/process-group-references'
   )
+  // TODO return a full json object to be consistent with other methods
   assert resp.status == 200
   // println resp.data
   processGroups = resp.data.processGroups.collectEntries {
@@ -377,14 +415,16 @@ client = conf.nifi.clientId
 
 currentRevision = -1 // used for optimistic concurrency throughout the REST API
 
+processGroups = [:]
+loadProcessGroups()
+
 handleUndeploy()
 
 templateId = null // will be assigned on import into NiFi
 importTemplate(conf.nifi.templateUri)
 instantiateTemplate(templateId)
 
-
-processGroups = [:]
+// reload after template instantiation
 loadProcessGroups()
 
 println "Configuring Controller Services"
