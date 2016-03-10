@@ -41,6 +41,9 @@ def handleUndeploy() {
   // TODO not optimal (would rather save all CS in state), but ok for now
   conf.nifi?.undeploy?.controllerServices?.each { csName ->
     def cs = lookupControllerService(csName)
+    if (cs) {
+      stopControllerService(cs.id)
+    }
   }
 }
 
@@ -227,26 +230,7 @@ def handleControllerService(Map.Entry config) {
     return
   }
   println "Enabling $cs.name (${cs.id})"
-  def builder = new JsonBuilder()
-  builder {
-      revision {
-          clientId client
-          version currentRevision
-      }
-      controllerService {
-          id "$cs.id"
-          state "$config.value.state"
-      }
-  }
-
-  println builder.toPrettyString()
-
-  resp = nifi.put(
-      path: "controller/controller-services/NODE/$cs.id",
-      body: builder.toPrettyString(),
-      requestContentType: JSON
-  )
-  assert resp.status == 200
+  startControllerService(cs.id)
 }
 
 def updateToLatestRevision() {
@@ -266,6 +250,7 @@ def startProcessor(processGroupId, processorId) {
 }
 
 private _changeProcessorState(processGroupId, processorId, boolean running) {
+  updateToLatestRevision()
   def builder = new JsonBuilder()
   builder {
       revision {
@@ -288,7 +273,53 @@ private _changeProcessorState(processGroupId, processorId, boolean running) {
   currentRevision = resp.data.revision.version
 }
 
+def stopControllerService(csId) {
+  _changeControllerServiceState(csId, false)
+}
 
+def startControllerService(csId) {
+  _changeControllerServiceState(csId, true)
+}
+
+private _changeControllerServiceState(csId, boolean enabled) {
+  updateToLatestRevision()
+
+  if (!enabled) {
+    println csId
+    // gotta stop all CS references first when disabling a CS
+    def resp = nifi.put (
+      path: "controller/controller-services/node/$csId/references",
+      body: [
+        clientId: client,
+        version: currentRevision,
+        state: 'STOPPED'
+      ],
+      requestContentType: URLENC
+    )
+    assert resp.status == 200
+  }
+
+  def builder = new JsonBuilder()
+  builder {
+    revision {
+      clientId client
+      version currentRevision
+    }
+    controllerService {
+      id csId
+      state enabled ? 'ENABLED' : 'DISABLED'
+    }
+  }
+
+  println builder.toPrettyString()
+
+  resp = nifi.put(
+      path: "controller/controller-services/NODE/$csId",
+      body: builder.toPrettyString(),
+      requestContentType: JSON
+  )
+  assert resp.status == 200
+}
 
 // script flow below
 
