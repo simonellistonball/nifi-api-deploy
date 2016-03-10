@@ -22,3 +22,6 @@ def c = p.value.config
 assert c
 
 assert c.'Listening Port' == 8000
+
+def s = 'Location: http://192.168.99.103:9091/nifi-api/controller/templates/1c6bd4ca-c934-36fd-98cd-397d0dc0f27d'
+println s[++s.lastIndexOf('/')..-1] // grabs the trailing UUID only

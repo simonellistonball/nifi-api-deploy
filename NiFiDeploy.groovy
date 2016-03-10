@@ -27,6 +27,7 @@ assert conf
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
 client = conf.nifi.clientId
 
+templateId = null // will be assigned on import into NiFi
 importTemplate(conf.nifi.templateUri)
 
 currentRevision = -1 // used for optimistic concurrency throughout the REST API
@@ -66,9 +67,12 @@ def importTemplate(String templateUri) {
                 println "[WARN] Template already exists, skipping for now"
                 break
             case 201:
-                println "Template successfully imported into NiFi"
+                // grab the trailing UUID part of the location URL header
+                def location = resp.headers.Location
+                templateId = location[++location.lastIndexOf('/')..-1]
+                println "Template successfully imported into NiFi. ID: $templateId"
+                updateToLatestRevision() // ready to make further changes
                 break
-
             default:
                 throw new Exception("Error importing template")
                 break
