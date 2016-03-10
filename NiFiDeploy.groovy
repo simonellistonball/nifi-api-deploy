@@ -43,6 +43,15 @@ def handleUndeploy() {
     def cs = lookupControllerService(csName)
     if (cs) {
       stopControllerService(cs.id)
+      updateToLatestRevision()
+      def resp = nifi.delete(
+        path: "controller/controller-services/NODE/$cs.id",
+        query: [
+          clientId: client,
+          version: currentRevision
+        ]
+      )
+      assert resp.status == 200
     }
   }
 }
@@ -207,7 +216,6 @@ def handleProcessGroup(Map.Entry pgConfig) {
     // check if pgConfig tells us to start this processor
     if (proc.value.state == 'RUNNING') {
       println "Will start it up next"
-      updateToLatestRevision()
       startProcessor(pgId, procId)
     } else {
       println "Processor wasn't configured to be running, not starting it up"
@@ -265,9 +273,9 @@ private _changeProcessorState(processGroupId, processorId, boolean running) {
 
   //println builder.toPrettyString()
   resp = nifi.put (
-          path: "controller/process-groups/$processGroupId/processors/$processorId",
-          body: builder.toPrettyString(),
-          requestContentType: JSON
+    path: "controller/process-groups/$processGroupId/processors/$processorId",
+    body: builder.toPrettyString(),
+    requestContentType: JSON
   )
   assert resp.status == 200
   currentRevision = resp.data.revision.version
