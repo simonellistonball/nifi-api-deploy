@@ -29,7 +29,6 @@ import static groovyx.net.http.Method.POST
 // implementation methods below
 
 def handleUndeploy() {
-  println "Undeploying"
   if (!conf.nifi.undeploy) {
     return
   }
@@ -40,12 +39,29 @@ def handleUndeploy() {
 
   // TODO not optimal (would rather save all CS in state), but ok for now
   conf.nifi?.undeploy?.controllerServices?.each { csName ->
+    println "Undeploying Controller Service: $csName"
     def cs = lookupControllerService(csName)
     if (cs) {
       stopControllerService(cs.id)
       updateToLatestRevision()
       def resp = nifi.delete(
         path: "controller/controller-services/NODE/$cs.id",
+        query: [
+          clientId: client,
+          version: currentRevision
+        ]
+      )
+      assert resp.status == 200
+    }
+  }
+
+  conf.nifi?.undeploy?.templates?.each { tName ->
+    println "Deleting template: $tName"
+    def t = lookupTemplate(tName)
+    if (t) {
+      updateToLatestRevision()
+      def resp = nifi.delete(
+        path: "controller/templates/$t.id",
         query: [
           clientId: client,
           version: currentRevision
@@ -77,6 +93,29 @@ def lookupControllerService(String name) {
   assert cs != null
 
   return cs
+}
+
+/**
+  Returns a json-backed template structure from NiFi. Null if not found.
+*/
+def lookupTemplate(String name) {
+  def resp = nifi.get(
+    path: 'controller/templates'
+  )
+  assert resp.status == 200
+
+  if (resp.data.templates.name.grep(name).isEmpty()) {
+    return null
+  }
+
+  assert resp.data.templates.name.grep(name).size() == 1 :
+            "Multiple templates found named '$name'"
+  // println prettyPrint(toJson(resp.data))
+
+  def t = resp.data.templates.find { it.name == name }
+  assert t != null
+
+  return t
 }
 
 def importTemplate(String templateUri) {
@@ -293,7 +332,6 @@ private _changeControllerServiceState(csId, boolean enabled) {
   updateToLatestRevision()
 
   if (!enabled) {
-    println csId
     // gotta stop all CS references first when disabling a CS
     def resp = nifi.put (
       path: "controller/controller-services/node/$csId/references",
