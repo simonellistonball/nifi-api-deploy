@@ -22,35 +22,50 @@ import static groovyx.net.http.Method.POST
       module='httpmime',
       version='4.2.1')
 
-conf = new Yaml().load(new File('nifi-deploy.yml').text)
-assert conf
-
-nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
-client = conf.nifi.clientId
-
-currentRevision = -1 // used for optimistic concurrency throughout the REST API
-
-templateId = null // will be assigned on import into NiFi
-importTemplate(conf.nifi.templateUri)
-instantiateTemplate(templateId)
-
-
-processGroups = [:]
-loadProcessGroups()
-
-println "Configuring Controller Services"
-
-// controller services are dependencies of processors,
-// configure them first
-conf.controllerServices.each { handleControllerService(it) }
-
-println "Configuring Process Groups and Processors"
-conf.processGroups.each { handleProcessGroup(it) }
-
-println 'All Done.'
+// see actual script content at the bottom of the text,
+// after every implementation method. Groovy compiler likes these much better
 
 
 // implementation methods below
+
+def handleUndeploy() {
+  println "Undeploying"
+  if (!conf.nifi.undeploy) {
+    return
+  }
+
+  // stop & remove controller services
+  // stop & remove process groups
+  // delete templates
+
+  // TODO not optimal (would rather save all CS in state), but ok for now
+  conf.nifi?.undeploy?.controllerServices?.each { csName ->
+    def cs = lookupControllerService(csName)
+  }
+}
+
+/**
+  Returns a json-backed controller service structure from NiFi
+*/
+def lookupControllerService(String name) {
+  def resp = nifi.get(
+    path: 'controller/controller-services/NODE'
+  )
+  assert resp.status == 200
+
+  if (resp.data.controllerServices.name.grep(name).isEmpty()) {
+    return
+  }
+
+  assert resp.data.controllerServices.name.grep(name).size() == 1 :
+            "Multiple controller services found named '$name'"
+  // println prettyPrint(toJson(resp.data))
+
+  def cs = resp.data.controllerServices.find { it.name == name }
+  assert cs != null
+
+  return cs
+}
 
 def importTemplate(String templateUri) {
   println "Loading template from URI: $templateUri"
@@ -65,23 +80,22 @@ def importTemplate(String templateUri) {
     request.entity = entity
 
     response.success = { resp, xml ->
-        switch (resp.statusLine.statusCode) {
-            case 200:
-                println "[WARN] Template already exists, skipping for now"
-                // TODO delete template, CS and, maybe a PG
-                break
-            case 201:
-                // grab the trailing UUID part of the location URL header
-                def location = resp.headers.Location
-                templateId = location[++location.lastIndexOf('/')..-1]
-                println "Template successfully imported into NiFi. ID: $templateId"
-                updateToLatestRevision() // ready to make further changes
-                break
-            default:
-                throw new Exception("Error importing template")
-                break
-        }
-
+      switch (resp.statusLine.statusCode) {
+        case 200:
+          println "[WARN] Template already exists, skipping for now"
+          // TODO delete template, CS and, maybe a PG
+          break
+        case 201:
+          // grab the trailing UUID part of the location URL header
+          def location = resp.headers.Location
+          templateId = location[++location.lastIndexOf('/')..-1]
+          println "Template successfully imported into NiFi. ID: $templateId"
+          updateToLatestRevision() // ready to make further changes
+          break
+        default:
+          throw new Exception("Error importing template")
+          break
+      }
     }
   }
 }
@@ -128,8 +142,6 @@ def handleProcessGroup(Map.Entry pgConfig) {
     return
   }
 
-
-
   updateToLatestRevision()
 
   def pgName = pgConfig.key
@@ -161,21 +173,20 @@ def handleProcessGroup(Map.Entry pgConfig) {
 
     def builder = new JsonBuilder()
     builder {
-        revision {
-          clientId client
-          version currentRevision
-        }
-        processor {
-          id procId
-          config {
-            properties {
-              procProps.each { p ->
-                "$p.key" p.value
-              }
+      revision {
+        clientId client
+        version currentRevision
+      }
+      processor {
+        id procId
+        config {
+          properties {
+            procProps.each { p ->
+              "$p.key" p.value
             }
           }
         }
-
+      }
     }
 
     println "Applying processor configuration"
@@ -189,7 +200,6 @@ def handleProcessGroup(Map.Entry pgConfig) {
       requestContentType: JSON
     )
     assert resp.status == 200
-
 
     // check if pgConfig tells us to start this processor
     if (proc.value.state == 'RUNNING') {
@@ -206,19 +216,9 @@ def handleControllerService(Map.Entry config) {
   //println config
   def name = config.key
   println "Looking up a controller service '$name'"
-  def resp = nifi.get(
-      path: 'controller/controller-services/NODE'
-  )
-  assert resp.status == 200
-  assert resp.data.controllerServices.name.grep(name).size() == 1
-  // println prettyPrint(toJson(resp.data))
 
-  // save a ref to the controller service for later
-  def cs = resp.data.controllerServices.find { it.name == name }
-  assert cs != null
-
+  def cs = lookupControllerService(name)
   updateToLatestRevision()
-  assert resp.status == 200
 
   println "Found the controller service '$cs.name'. Current state is ${cs.state}."
 
@@ -287,3 +287,36 @@ private _changeProcessorState(processGroupId, processorId, boolean running) {
   assert resp.status == 200
   currentRevision = resp.data.revision.version
 }
+
+
+
+// script flow below
+
+conf = new Yaml().load(new File('nifi-deploy.yml').text)
+assert conf
+
+nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
+client = conf.nifi.clientId
+
+currentRevision = -1 // used for optimistic concurrency throughout the REST API
+
+handleUndeploy()
+
+templateId = null // will be assigned on import into NiFi
+importTemplate(conf.nifi.templateUri)
+instantiateTemplate(templateId)
+
+
+processGroups = [:]
+loadProcessGroups()
+
+println "Configuring Controller Services"
+
+// controller services are dependencies of processors,
+// configure them first
+conf.controllerServices.each { handleControllerService(it) }
+
+println "Configuring Process Groups and Processors"
+conf.processGroups.each { handleProcessGroup(it) }
+
+println 'All Done.'
