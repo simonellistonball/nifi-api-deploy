@@ -6,7 +6,8 @@
  - Describe NiFi state and configuration properties for things you want tweaked in a template. YAML format came out to be the cleanest and most usable option (YAML is a subset of JSON)
  - (Recommended) Tell NiFi what things are in your way and have them undeployed as part of the process. Good idea if one wants a deployment to be **idempotent**.
 
-TODO NiFi templates documentation link
+### Wait, what's a template?
+Template is a NiFi means to share and exchange re-usable parts of a flow. It can be trivial or very complex, works the same way all along. Documentation at https://nifi.apache.org/docs/nifi-docs/html/user-guide.html#templates
 
 # 1-minute How-To
 ```
