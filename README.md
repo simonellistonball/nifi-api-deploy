@@ -111,3 +111,11 @@ processGroups:
           Replacement Value: Dynamically Configured NiFi!
 
 ```
+
+# Troubleshooting
+### Proxy
+The script automatically downloads several dependencies from a Maven central repository (via Grape annotation). If you are behind a firewall, and can't reach that server directly, try adding these system properties on the command line:
+```
+groovy -Dhttp.proxyHost=myproxy.mycompany.com -Dhttp.proxyPort=3128 NiFiDeploy.groovy
+```
+See more at http://docs.oracle.com/javase/8/docs/technotes/guides/net/proxies.html
