@@ -109,6 +109,5 @@ processGroups:
       "Update Request Body with a greeting!":
         config:
           Replacement Value: Dynamically Configured NiFi!
-Status API Training Shop Blog About Pricing
 
 ```
