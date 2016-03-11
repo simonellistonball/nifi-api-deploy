@@ -21,6 +21,9 @@ groovy NiFiDeploy.groovy
 # after deployment completes
 nifi-api-deploy ♨ > curl http://192.168.99.102:10000
 Dynamically Configured NiFi!
+
+# bonus item, see 'undeploy' in action
+groovy NiFiDeploy.groovy
 ```
 
 
@@ -34,4 +37,78 @@ When things finish one ends up with the following in NiFi:
 
 ![Image of the Template Running](/assets/HelloNiFi_screenshot.png)
 
+# 5-minute Introduction
 
+The `nifi-deploy.yml` has several major sections:
+
+ - Basics, like your NiFi address and where to get the template from
+ - Undeploy instructions, for idempotent script runs
+ - Controller Services to be instantiated
+ - Processor configurations
+
+Best way to grasp things is to dissect the YAML file:
+```
+nifi:
+  url: http://192.168.99.103:9091
+  
+  # when making changes via API, need a unique client ID, can be anything
+  clientId: Deployment Script v1
+
+  # Where to fetch the actual template XML data from
+  # Escape complex URLs with quotes
+  templateUri: "any file://..., http://..., etc URL"
+
+  # Tell NiFi we want some things removed to make way for this (re-) deployment
+  undeploy:
+
+    # Names of controller services to remove. Ignores any missing ones
+    controllerServices:
+      - StandardHttpContextMap
+      - SomeOtherControllerService
+
+    # Names of process groups to remove. These are in your template
+    processGroups:
+      - Hello NiFi Web Service
+
+    # Template names to remove. Because we're updating with a new version
+    templates:
+      - Hello NiFi Web Service
+``` 
+
+
+Next, one describes what configuration changes need to be applied to the template in this deployment:
+```
+# Instantiate these controller services, our template uses them
+controllerServices:
+  StandardHttpContextMap:
+    state: ENABLED
+
+# Processors belong to process groups.
+# This way random ones won't be picked up (unlike a search api,
+# which returns every occurence)
+processGroups:
+
+  # Empty in this case, as our template puts everything in a group
+  root: ~
+
+  # Process group name from a template
+  Hello NiFi Web Service:
+
+    # processors we want to reconfigure from template defaults
+    processors:
+ 
+      # processor by name
+      Receive request and data:
+        state: RUNNING
+
+        # These match the Properties tab in the processor UI
+        config:
+          Listening Port: 10000
+
+      # another processor, but name is escaped with quotes
+      "Update Request Body with a greeting!":
+        config:
+          Replacement Value: Dynamically Configured NiFi!
+Status API Training Shop Blog About Pricing
+
+```
