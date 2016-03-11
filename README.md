@@ -31,4 +31,6 @@ When things finish one ends up with the following in NiFi:
  - Template is instantiated and its  `Processing Group` is added to the canvas
  - Things are started up and an HTTP endpoint is listening on port 10000
 
+![Image of the Template Running](/assets/HelloNiFi_screenshot.png)
+
 
