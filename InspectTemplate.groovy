@@ -32,10 +32,10 @@ t.snippet.processors?.each {
 }
 
 t.snippet.processGroups.each {
-  processGroup(it)
+  parseGroup(it)
 }
 
-def processGroup(node) {
+def parseGroup(node) {
   def pgName = node.name.text()
   y.processGroups[pgName] = [:]
   y.processGroups[pgName].processors = [:]
