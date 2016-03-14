@@ -16,10 +16,12 @@ y = [:]
 y.nifi = [:]
 y.nifi.templateUri = templateUri
 
-y.controllerServices = [:]
-t.snippet.controllerServices.each {
-  y.controllerServices[it.name.text()] = [:]
-  y.controllerServices[it.name.text()].state = 'ENABLED'
+if (t.snippet.controllerServices.size() > 0) {
+  y.controllerServices = [:]
+  t.snippet.controllerServices.each {
+    y.controllerServices[it.name.text()] = [:]
+    y.controllerServices[it.name.text()].state = 'ENABLED'
+  }
 }
 
 y.processGroups = [:]
