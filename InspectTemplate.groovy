@@ -40,12 +40,16 @@ def parseGroup(node) {
   y.processGroups[pgName] = [:]
   y.processGroups[pgName].processors = [:]
 
+  parseProcessors(pgName, node)
+}
+
+def parseProcessors(groupName, node) {
   node.contents.processors.each { p ->
-    y.processGroups[pgName].processors[p.name.text()] = [:]
-    y.processGroups[pgName].processors[p.name.text()].config = [:]
+    y.processGroups[groupName].processors[p.name.text()] = [:]
+    y.processGroups[groupName].processors[p.name.text()].config = [:]
 
     p.config.properties?.entry?.each {
-      def c = y.processGroups[pgName].processors[p.name.text()].config
+      def c = y.processGroups[groupName].processors[p.name.text()].config
       c[it.key.text()] = it.value.text()
     }
   }
