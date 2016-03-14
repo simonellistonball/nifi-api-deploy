@@ -24,11 +24,9 @@ t.snippet.controllerServices.each {
 
 y.processGroups = [:]
 
-// special handling for root-level processors
-t.snippet.processors?.each {
-  y.processGroups.root = [:]
-  y.processGroups.root[it.name.text()] = [:]
-
+if (t.snippet.processors.size() > 0) {
+  // special handling for root-level processors
+  parseGroup(t.snippet)
 }
 
 t.snippet.processGroups.each {
@@ -36,7 +34,11 @@ t.snippet.processGroups.each {
 }
 
 def parseGroup(node) {
-  def pgName = node.name.text()
+  def pgName = node?.name.text()
+  if (!pgName) {
+    pgName = 'root'
+  }
+
   y.processGroups[pgName] = [:]
   y.processGroups[pgName].processors = [:]
 
@@ -44,7 +46,10 @@ def parseGroup(node) {
 }
 
 def parseProcessors(groupName, node) {
-  node.contents.processors.each { p ->
+  def processors = node.contents.isEmpty()
+                          ? node.processors          // root process group
+                          : node.contents.processors // regular process group
+  processors.each { p ->
     y.processGroups[groupName].processors[p.name.text()] = [:]
     y.processGroups[groupName].processors[p.name.text()].config = [:]
 
