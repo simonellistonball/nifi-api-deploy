@@ -19,9 +19,17 @@ y.nifi.templateName = t.name.text()
 
 if (t.snippet.controllerServices.size() > 0) {
   y.controllerServices = [:]
-  t.snippet.controllerServices.each {
-    y.controllerServices[it.name.text()] = [:]
-    y.controllerServices[it.name.text()].state = 'ENABLED'
+  t.snippet.controllerServices.each { xCs ->
+    def yC = y.controllerServices
+    yC[xCs.name.text()] = [:]
+    yC[xCs.name.text()].state = 'ENABLED'
+    def xProps = xCs.properties?.entry
+    if (xProps.size() > 0) {
+      yC[xCs.name.text()].config = [:]
+      xProps.each { xProp ->
+        yC[xCs.name.text()].config[xProp.key.text()] = xProp.value.text()
+      }
+    }
   }
 }
 
