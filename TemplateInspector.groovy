@@ -15,6 +15,7 @@ def t = new XmlSlurper().parse(templateUri)
 y = [:]
 y.nifi = [:]
 y.nifi.templateUri = templateUri
+y.nifi.templateName = t.name.text()
 
 if (t.snippet.controllerServices.size() > 0) {
   y.controllerServices = [:]
