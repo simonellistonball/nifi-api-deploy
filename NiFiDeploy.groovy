@@ -486,6 +486,13 @@ conf = new Yaml().load(new File('nifi-deploy.yml').text)
 assert conf
 
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
+nifi.handler.failure = { resp, data ->
+    resp.setData(data?.text)
+    println "[ERROR] HTTP call failed. Status code: $resp.statusLine: $resp.data"
+    // fail gracefully with a more sensible groovy stacktrace
+    assert null : "Terminated script execution"
+}
+
 client = conf.nifi.clientId
 
 thisHost = InetAddress.localHost
