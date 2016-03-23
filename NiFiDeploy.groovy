@@ -292,9 +292,9 @@ def handleProcessGroup(Map.Entry pgConfig) {
   startProcessGroup(pgId)
 }
 
-def handleControllerService(Map.Entry config) {
+def handleControllerService(Map.Entry cfg) {
   //println config
-  def name = config.key
+  def name = cfg.key
   println "Looking up a controller service '$name'"
 
   def cs = lookupControllerService(name)
@@ -302,10 +302,42 @@ def handleControllerService(Map.Entry config) {
 
   println "Found the controller service '$cs.name'. Current state is ${cs.state}."
 
-  if (cs.state == config.value.state) {
+  if (cs.state == cfg.value.state) {
     println "$cs.name is already in a requested state: '$cs.state'"
     return
   }
+
+  if (cfg.value?.config) {
+    def builder = new JsonBuilder()
+    builder {
+      revision {
+        clientId client
+        version currentRevision
+      }
+      controllerService {
+        id cs.id
+        properties {
+          cfg.value.config.each { p ->
+            "$p.key" p.value
+          }
+        }
+      }
+    }
+
+    println "Applying controller service '$cs.name' configuration"
+    println builder.toPrettyString()
+
+    updateToLatestRevision()
+
+    resp = nifi.put (
+      path: "controller/controller-services/NODE/$cs.id",
+      body: builder.toPrettyString(),
+      requestContentType: JSON
+    )
+    assert resp.status == 200
+  }
+
+
   println "Enabling $cs.name (${cs.id})"
   startControllerService(cs.id)
 }

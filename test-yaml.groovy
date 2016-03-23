@@ -15,6 +15,15 @@ assert config.nifi.undeploy.processGroups[0] == 'Hello NiFi Web Service'
 assert config.nifi.undeploy.templates.size() == 1
 assert config.nifi.undeploy.templates[0] == 'Hello NiFi Web Service'
 
+def cs = config.controllerServices.StandardHttpContextMap
+assert cs
+def csConfig = cs.config
+assert csConfig?.entrySet().size() == 1
+def r = csConfig.entrySet()[0]
+assert r.key == 'Maximum Outstanding Requests'
+assert r.value == 20
+
+
 assert config.processGroups.size() == 2
 
 def pg = config.processGroups['Hello NiFi Web Service']
