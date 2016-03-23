@@ -234,7 +234,7 @@ def handleProcessGroup(Map.Entry pgConfig) {
 
   // construct a quick map of "procName -> [id, fullUri]"
   def processors = resp.data.processors.collectEntries {
-    [(it.name): [it.id, it.uri]]
+    [(it.name): [it.id, it.uri, it.comments]]
   }
 
   pgConfig.value.processors.each { proc ->
@@ -243,12 +243,14 @@ def handleProcessGroup(Map.Entry pgConfig) {
     assert result.entrySet().size() == 1 : "Ambiguous processor name '$proc.key'"
 
     def procId = processors[proc.key][0]
+    def existingComments = processors[proc.key][2]
 
     println "Stopping Processor '$proc.key' ($procId)"
     stopProcessor(pgId, procId)
 
     def procProps = proc.value.config.entrySet()
 
+    println "Applying processor configuration"
     def builder = new JsonBuilder()
     builder {
       revision {
@@ -258,6 +260,7 @@ def handleProcessGroup(Map.Entry pgConfig) {
       processor {
         id procId
         config {
+          comments existingComments ?: defaultComment
           properties {
             procProps.each { p ->
               "$p.key" p.value
@@ -267,7 +270,6 @@ def handleProcessGroup(Map.Entry pgConfig) {
       }
     }
 
-    println "Applying processor configuration"
     println builder.toPrettyString()
 
     updateToLatestRevision()
@@ -308,6 +310,7 @@ def handleControllerService(Map.Entry cfg) {
   }
 
   if (cfg.value?.config) {
+    println "Applying controller service '$cs.name' configuration"
     def builder = new JsonBuilder()
     builder {
       revision {
@@ -316,6 +319,7 @@ def handleControllerService(Map.Entry cfg) {
       }
       controllerService {
         id cs.id
+        comments cs.comments ?: defaultComment
         properties {
           cfg.value.config.each { p ->
             "$p.key" p.value
@@ -324,7 +328,7 @@ def handleControllerService(Map.Entry cfg) {
       }
     }
 
-    println "Applying controller service '$cs.name' configuration"
+
     println builder.toPrettyString()
 
     updateToLatestRevision()
@@ -458,6 +462,9 @@ assert conf
 
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
 client = conf.nifi.clientId
+
+thisHost = InetAddress.localHost
+defaultComment = "Last updated by '$client' on ${new Date()} from $thisHost"
 
 currentRevision = -1 // used for optimistic concurrency throughout the REST API
 
