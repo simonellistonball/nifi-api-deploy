@@ -226,8 +226,32 @@ def handleProcessGroup(Map.Entry pgConfig) {
   println "Process Group: $pgConfig.key ($pgId)"
   //println pgConfig
 
-  println "Current comments: $pg.comments"
-  println "Default comment:  $defaultComment"
+  if (!pg.comments) {
+    updateToLatestRevision()
+    // update process group comments with a deployment timestamp
+    def builder = new JsonBuilder()
+    builder {
+      revision {
+        clientId client
+        version currentRevision
+      }
+      processGroup {
+        id pgId
+        comments defaultComment
+      }
+    }
+
+    // println builder.toPrettyString()
+
+    updateToLatestRevision()
+
+    resp = nifi.put (
+      path: "controller/process-groups/$pgId",
+      body: builder.toPrettyString(),
+      requestContentType: JSON
+    )
+    assert resp.status == 200
+  }
 
   // load processors in this group
   resp = nifi.get(path: "controller/process-groups/$pgId/processors")
@@ -271,7 +295,7 @@ def handleProcessGroup(Map.Entry pgConfig) {
       }
     }
 
-    println builder.toPrettyString()
+    // println builder.toPrettyString()
 
     updateToLatestRevision()
 
@@ -330,7 +354,7 @@ def handleControllerService(Map.Entry cfg) {
     }
 
 
-    println builder.toPrettyString()
+    // println builder.toPrettyString()
 
     updateToLatestRevision()
 
@@ -446,7 +470,7 @@ private _changeControllerServiceState(csId, boolean enabled) {
     }
   }
 
-  println builder.toPrettyString()
+  // println builder.toPrettyString()
 
   resp = nifi.put(
       path: "controller/controller-services/NODE/$csId",
