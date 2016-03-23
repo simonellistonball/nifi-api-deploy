@@ -57,15 +57,14 @@ def handleUndeploy() {
 
   conf.nifi?.undeploy?.processGroups?.each { pgName ->
     println "Undeploying Process Group: $pgName"
-    def pg = processGroups.findAll { it.key == pgName }
+    def pg = processGroups.findAll { it.name == pgName }
     if (pg.isEmpty()) {
       println "[WARN] No such process group found in NiFi"
       return
     }
     assert pg.size() == 1 : "Ambiguous process group name"
 
-    // TODO not the best data structure, but should go away once we operate on a full json
-    def id = pg.entrySet()[0].value
+    def id = pg[0].id
 
     stopProcessGroup(id)
 
@@ -199,12 +198,9 @@ def loadProcessGroups() {
   def resp = nifi.get(
     path: 'controller/process-groups/root/process-group-references'
   )
-  // TODO return a full json object to be consistent with other methods
   assert resp.status == 200
   // println resp.data
-  processGroups = resp.data.processGroups.collectEntries {
-    [(it.name): it.id]
-  }
+  processGroups = resp.data.processGroups
 }
 
 /**
@@ -223,7 +219,7 @@ def handleProcessGroup(Map.Entry pgConfig) {
   updateToLatestRevision()
 
   def pgName = pgConfig.key
-  def pgId = processGroups[pgName]
+  def pgId = processGroups.find { it.name == pgName }?.id
   assert pgId : "Processing Group '$pgName' not found in this instance, check your deployment config?"
   println "Process Group: $pgConfig.key ($pgId)"
   //println pgConfig
@@ -468,7 +464,7 @@ defaultComment = "Last updated by '$client' on ${new Date()} from $thisHost"
 
 currentRevision = -1 // used for optimistic concurrency throughout the REST API
 
-processGroups = [:]
+processGroups = null
 loadProcessGroups()
 
 handleUndeploy()
