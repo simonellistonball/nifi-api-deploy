@@ -219,10 +219,15 @@ def handleProcessGroup(Map.Entry pgConfig) {
   updateToLatestRevision()
 
   def pgName = pgConfig.key
-  def pgId = processGroups.find { it.name == pgName }?.id
-  assert pgId : "Processing Group '$pgName' not found in this instance, check your deployment config?"
+  def pg = processGroups.find { it.name == pgName }
+  assert pg : "Processing Group '$pgName' not found in this instance, check your deployment config?"
+  def pgId = pg.id
+
   println "Process Group: $pgConfig.key ($pgId)"
   //println pgConfig
+
+  println "Current comments: $pg.comments"
+  println "Default comment:  $defaultComment"
 
   // load processors in this group
   resp = nifi.get(path: "controller/process-groups/$pgId/processors")
