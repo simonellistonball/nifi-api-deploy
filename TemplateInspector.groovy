@@ -57,9 +57,8 @@ def parseGroup(node) {
 }
 
 def parseProcessors(groupName, node) {
-  def processors = node.contents.isEmpty()
-                          ? node.processors          // root process group
-                          : node.contents.processors // regular process group
+  def processors = node.contents.isEmpty() ? node.processors          // root process group
+                                           : node.contents.processors // regular process group
   processors.each { p ->
     y.processGroups[groupName].processors[p.name.text()] = [:]
     y.processGroups[groupName].processors[p.name.text()].config = [:]
