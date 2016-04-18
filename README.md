@@ -54,13 +54,13 @@ Best way to grasp things is to dissect the YAML file:
 ```
 nifi:
   url: http://192.168.99.103:9091
-  
+
   # when making changes via API, need a unique client ID, can be anything
   clientId: Deployment Script v1
 
   # Where to fetch the actual template XML data from
   # Escape complex URLs with quotes
-  templateUri: "any file://..., http://..., etc URL"
+  templateUri: "any file: , http://..., etc URL"
 
   # Tell NiFi we want some things removed to make way for this (re-) deployment
   undeploy:
@@ -77,7 +77,7 @@ nifi:
     # Template names to remove. Because we're updating with a new version
     templates:
       - Hello NiFi Web Service
-``` 
+```
 
 
 Next, one describes what configuration changes need to be applied to the template in this deployment:
@@ -100,7 +100,7 @@ processGroups:
 
     # processors we want to reconfigure from template defaults
     processors:
- 
+
       # processor by name
       Receive request and data:
         state: RUNNING
