@@ -3,10 +3,30 @@ import org.yaml.snakeyaml.DumperOptions
 
 @Grab(group='org.yaml', module='snakeyaml', version='1.17')
 
-def defaultTemplateUri = 'https://cwiki.apache.org/confluence/download/attachments/57904847/Hello_NiFi_Web_Service.xml?version=1&modificationDate=1449369797000&api=v2'
-def templateUri = defaultTemplateUri
-if (args.size() >= 1) {
-  templateUri = args[0]
+def cli = new CliBuilder(usage: 'groovy TemplateInspector.groovy [options]',
+                         header: 'Options:')
+cli.with {
+  f longOpt: 'file',
+    'Template file to inspect (can be a URL). E.g. try this hello world template at https://goo.gl/M1vmvS',
+    args:1, argName: 'template', type:String.class
+  h longOpt: 'help', 'This usage screen'
+}
+
+def opts = cli.parse(args)
+if (!opts) { return }
+if (opts.help) {
+  cli.usage()
+  return
+}
+
+
+def templateUri
+if (opts.file) {
+  templateUri = opts.file
+} else {
+  println "ERROR: Missing a file argument\n"
+  cli.usage()
+  System.exit(-1)
 }
 
 def t = new XmlSlurper().parse(templateUri)
@@ -71,7 +91,7 @@ def parseProcessors(groupName, node) {
 }
 
 // serialize to yaml
-def opts = new DumperOptions()
-opts.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
-opts.prettyFlow = true
-println new Yaml(opts).dump(y)
+def yamlOpts = new DumperOptions()
+yamlOpts.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+yamlOpts.prettyFlow = true
+println new Yaml(yamlOpts).dump(y)
