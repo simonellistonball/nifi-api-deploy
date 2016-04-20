@@ -26,6 +26,33 @@ import static groovyx.net.http.Method.POST
 // after every implementation method. Groovy compiler likes these much better
 
 
+def cli = new CliBuilder(usage: 'groovy NiFiDeploy.groovy [options]',
+                         header: 'Options:')
+cli.with {
+  f longOpt: 'file',
+    'Deployment specification file in a YAML format',
+    args:1, type:String.class
+  h longOpt: 'help', 'This usage screen'
+}
+
+def opts = cli.parse(args)
+if (!opts) { return }
+if (opts.help) {
+  cli.usage()
+  return
+}
+
+
+def deploymentSpec
+if (opts.file) {
+  deploymentSpec = opts.file
+} else {
+  println "ERROR: Missing a file argument\n"
+  cli.usage()
+  System.exit(-1)
+}
+
+
 // implementation methods below
 
 def handleUndeploy() {
@@ -482,7 +509,7 @@ private _changeControllerServiceState(csId, boolean enabled) {
 
 // script flow below
 
-conf = new Yaml().load(new File('nifi-deploy.yml').text)
+conf = new Yaml().load(new File(deploymentSpec).text)
 assert conf
 
 nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
