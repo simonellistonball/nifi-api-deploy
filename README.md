@@ -20,14 +20,14 @@ cd nifi-api-deploy
 
 # edit nifi-deploy.yml and point nifi.url to your NiFi instance or cluster
 
-groovy NiFiDeploy.groovy
+groovy NiFiDeploy.groovy --file nifi-deploy.yml
 ...
 # after deployment completes
 nifi-api-deploy ♨ > curl http://192.168.99.102:10000
 Dynamically Configured NiFi!
 
 # bonus item, see 'undeploy' in action
-groovy NiFiDeploy.groovy
+groovy NiFiDeploy.groovy --file nifi-deploy.yml
 ```
 
 
