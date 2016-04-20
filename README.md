@@ -123,3 +123,6 @@ The script automatically downloads several dependencies from a Maven central rep
 groovy -Dhttp.proxyHost=myproxy.mycompany.com -Dhttp.proxyPort=3128 NiFiDeploy.groovy
 ```
 See more at http://docs.oracle.com/javase/8/docs/technotes/guides/net/proxies.html
+
+### REST API Issues
+Start troubleshooting by enabling the HTTP debug option via the `--debug`
