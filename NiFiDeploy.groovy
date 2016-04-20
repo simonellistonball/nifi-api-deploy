@@ -33,6 +33,7 @@ cli.with {
     'Deployment specification file in a YAML format',
     args:1, type:String.class
   h longOpt: 'help', 'This usage screen'
+  d longOpt: 'debug', 'Debug underlying HTTP wire communication'
 }
 
 def opts = cli.parse(args)
@@ -52,6 +53,11 @@ if (opts.file) {
   System.exit(-1)
 }
 
+if (opts.debug) {
+  System.setProperty('org.apache.commons.logging.Log', 'org.apache.commons.logging.impl.SimpleLog')
+  System.setProperty('org.apache.commons.logging.simplelog.showdatetime', 'true')
+  System.setProperty('org.apache.commons.logging.simplelog.log.org.apache.http', 'DEBUG')
+}
 
 // implementation methods below
 
