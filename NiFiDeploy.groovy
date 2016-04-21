@@ -34,6 +34,8 @@ cli.with {
     args:1, type:String.class
   h longOpt: 'help', 'This usage screen'
   d longOpt: 'debug', 'Debug underlying HTTP wire communication'
+  n longOpt: 'nifi-api', 'NiFi REST API , e.g. http://example.com:9090',
+    args:1, type:String.class
 }
 
 def opts = cli.parse(args)
@@ -518,7 +520,15 @@ private _changeControllerServiceState(csId, boolean enabled) {
 conf = new Yaml().load(new File(deploymentSpec).text)
 assert conf
 
-nifi = new RESTClient("${conf.nifi.url}/nifi-api/")
+nifiHostPort = null
+if (opts.'nifi-api') {
+  nifiHostPort = opts.'nifi-api'
+} else {
+  nifiHostPort = conf.nifi.url
+}
+assert nifiHostPort : "No NiFI REST API endpoint provided"
+
+nifi = new RESTClient("$nifiHostPort/nifi-api/")
 nifi.handler.failure = { resp, data ->
     resp.setData(data?.text)
     println "[ERROR] HTTP call failed. Status code: $resp.statusLine: $resp.data"
