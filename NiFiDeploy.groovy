@@ -31,11 +31,13 @@ def cli = new CliBuilder(usage: 'groovy NiFiDeploy.groovy [options]',
 cli.with {
   f longOpt: 'file',
     'Deployment specification file in a YAML format',
-    args:1, type:String.class
+    args:1, argName:'name', type:String.class
   h longOpt: 'help', 'This usage screen'
   d longOpt: 'debug', 'Debug underlying HTTP wire communication'
-  n longOpt: 'nifi-api', 'NiFi REST API , e.g. http://example.com:9090',
-    args:1, type:String.class
+  n longOpt: 'nifi-api', 'NiFi REST API (override), e.g. http://example.com:9090',
+    args:1, argName:'http://host:port', type:String.class
+  t longOpt: 'template', 'Template URI (override)',
+    args:1, argName:'uri', type:String.class
 }
 
 def opts = cli.parse(args)
@@ -520,12 +522,7 @@ private _changeControllerServiceState(csId, boolean enabled) {
 conf = new Yaml().load(new File(deploymentSpec).text)
 assert conf
 
-nifiHostPort = null
-if (opts.'nifi-api') {
-  nifiHostPort = opts.'nifi-api'
-} else {
-  nifiHostPort = conf.nifi.url
-}
+def nifiHostPort = opts.'nifi-api' ?: conf.nifi.url
 assert nifiHostPort : "No NiFI REST API endpoint provided"
 
 nifi = new RESTClient("$nifiHostPort/nifi-api/")
@@ -549,7 +546,10 @@ loadProcessGroups()
 handleUndeploy()
 
 templateId = null // will be assigned on import into NiFi
-importTemplate(conf.nifi.templateUri)
+
+def tUri = opts.template ?: conf.nifi.templateUri
+assert tUri : "Template URI not provided"
+importTemplate(tUri)
 instantiateTemplate(templateId)
 
 // reload after template instantiation
