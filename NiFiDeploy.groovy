@@ -38,6 +38,8 @@ cli.with {
     args:1, argName:'http://host:port', type:String.class
   t longOpt: 'template', 'Template URI (override)',
     args:1, argName:'uri', type:String.class
+  c longOpt: 'client-id', 'Client ID for API calls, any unique string (override)',
+    args:1, argName:'id', type:String.class
 }
 
 def opts = cli.parse(args)
@@ -533,7 +535,9 @@ nifi.handler.failure = { resp, data ->
     assert null : "Terminated script execution"
 }
 
-client = conf.nifi.clientId
+
+client = opts.'client-id' ?: conf.nifi.clientId
+assert client : 'Client ID must be provided'
 
 thisHost = InetAddress.localHost
 defaultComment = "Last updated by '$client' on ${new Date()} from $thisHost"
