@@ -81,7 +81,7 @@ def handleUndeploy() {
     print "Undeploying Controller Service: $csName"
     def cs = lookupControllerService(csName)
     if (cs) {
-      println "($cs.id)"
+      println " ($cs.id)"
       stopControllerService(cs.id)
       updateToLatestRevision()
       def resp = nifi.delete(
@@ -93,7 +93,7 @@ def handleUndeploy() {
       )
       assert resp.status == 200
     } else {
-      println
+      println ''
     }
   }
 
