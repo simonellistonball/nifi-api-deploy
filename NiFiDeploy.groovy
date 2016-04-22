@@ -78,9 +78,10 @@ def handleUndeploy() {
 
   // TODO not optimal (would rather save all CS in state), but ok for now
   conf.nifi?.undeploy?.controllerServices?.each { csName ->
-    println "Undeploying Controller Service: $csName"
+    print "Undeploying Controller Service: $csName"
     def cs = lookupControllerService(csName)
     if (cs) {
+      println "($cs.id)"
       stopControllerService(cs.id)
       updateToLatestRevision()
       def resp = nifi.delete(
@@ -91,6 +92,8 @@ def handleUndeploy() {
         ]
       )
       assert resp.status == 200
+    } else {
+      println
     }
   }
 
