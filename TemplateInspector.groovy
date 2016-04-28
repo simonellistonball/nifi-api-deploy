@@ -29,7 +29,7 @@ if (opts.file) {
   System.exit(-1)
 }
 
-def t = new XmlSlurper().parse(templateUri)
+t = new XmlSlurper().parse(templateUri)
 
 // create a data structure
 y = [:]
@@ -85,7 +85,14 @@ def parseProcessors(groupName, node) {
 
     p.config.properties?.entry?.each {
       def c = y.processGroups[groupName].processors[p.name.text()].config
-      c[it.key.text()] = it.value.text()
+      // check if it's a UUID and try lookup the CS to get the name
+      if (it.value.text() ==~ /[a-zA-Z0-9]{8}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{12}/) {
+        def n = t.snippet.controllerServices.find { cs -> cs.id.text() == it.value.text() }
+        assert !n.isEmpty() : "Couldn't resolve a Controller Service with ID: ${it.value.text()}"
+        c[it.key.text()] = n.name.text()
+      } else {
+        c[it.key.text()] = it.value.text()
+      }
     }
   }
 }
