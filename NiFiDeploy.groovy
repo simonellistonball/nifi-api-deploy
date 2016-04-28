@@ -330,7 +330,17 @@ def handleProcessGroup(Map.Entry pgConfig) {
           comments existingComments ?: defaultComment
           properties {
             procProps.each { p ->
-              "$p.key" p.value
+              // check if it's a ${referenceToControllerServiceName}
+              def ref = p.value =~ /\$\{(.*)}/
+              if (ref) {
+                def name = ref[0][1] // grab the first capture group (nested inside ArrayList)
+                // lookup the CS by name and get the newly generated ID instead of the one in a template
+                def newCS = lookupControllerService(name)
+                assert newCS : "Couldn't locate Controller Service with the name: $name"
+                "$p.key" newCS.id
+              } else {
+                "$p.key" p.value
+              }
             }
           }
         }
