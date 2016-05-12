@@ -95,8 +95,8 @@ def parseProcessors(groupName, node) {
         def n = t.snippet.controllerServices.find { cs -> cs.id.text() == it.value.text() }
         assert !n.isEmpty() : "Couldn't resolve a Controller Service with ID: ${it.value.text()}"
         c[it.key.text()] = '\${' + n.name.text() + "}"
-      } else {
-        c[it.key.text()] = it.value.text()
+      } else if (it.value.size() > 0) {
+          c[it.key.text()] = it.value.size() == 0 ? null : it.value.text()
       }
     }
   }
