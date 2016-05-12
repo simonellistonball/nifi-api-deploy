@@ -538,6 +538,10 @@ conf = new Yaml().load(new File(deploymentSpec).text)
 assert conf
 
 def nifiHostPort = opts.'nifi-api' ?: conf.nifi.url
+if (!nifiHostPort) {
+  println 'Please specify a NiFi instance URL in the deployment spec file or via CLI'
+  System.exit(-1)
+}
 nifiHostPort = nifiHostPort.endsWith('/') ? nifiHostPort[0..-2] : nifiHostPort
 assert nifiHostPort : "No NiFI REST API endpoint provided"
 
