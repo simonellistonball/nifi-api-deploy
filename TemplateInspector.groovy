@@ -52,7 +52,9 @@ if (t.snippet.controllerServices.size() > 0) {
     if (xProps.size() > 0) {
       yC[xCs.name.text()].config = [:]
       xProps.each { xProp ->
-        yC[xCs.name.text()].config[xProp.key.text()] = xProp.value.text()
+        if (xProp.value.size() > 0) {
+          yC[xCs.name.text()].config[xProp.key.text()] = xProp.value.text()
+        }
       }
     }
   }
