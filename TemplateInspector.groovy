@@ -23,6 +23,11 @@ if (opts.help) {
 def templateUri
 if (opts.file) {
   templateUri = opts.file
+  def scheme = new URI(templateUri).scheme
+  if (!scheme) {
+      // assume a local file
+      templateUri = 'file:' + templateUri
+  }
 } else {
   println "ERROR: Missing a file argument\n"
   cli.usage()
