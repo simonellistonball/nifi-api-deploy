@@ -468,7 +468,29 @@ def startProcessGroup(pgId) {
 }
 
 def stopProcessGroup(pgId) {
+  print "Waiting for a Process Group to stop: $pgId "
   _changeProcessGroupState(pgId, false)
+
+
+  int maxWait = 1000 * 30 // up to X seconds
+  def resp = nifi.get(path: "controller/process-groups/$pgId/status")
+  assert resp.status == 200
+  long start = System.currentTimeMillis()
+
+  // keep polling till active threads shut down, but no more than maxWait time
+  while ((System.currentTimeMillis() < (start + maxWait)) &&
+            resp.data.processGroupStatus.activeThreadCount > 0) {
+    sleep(1000)
+    resp = nifi.get(path: "controller/process-groups/$pgId/status")
+    assert resp.status == 200
+    print '.'
+  }
+  if (resp.data.processGroupStatus.activeThreadCount == 0) {
+    println 'Done'
+  } else {
+    println "Failed to stop the processing group, request timed out after ${maxWait/1000} seconds"
+    System.exit(-1)
+  }
 }
 
 private _changeProcessGroupState(pgId, boolean running) {
