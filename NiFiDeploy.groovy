@@ -10,11 +10,13 @@ import static groovyx.net.http.ContentType.JSON
 import static groovyx.net.http.ContentType.URLENC
 import static groovyx.net.http.Method.POST
 
-
+import java.security.KeyStore
+import org.apache.http.conn.scheme.Scheme
+import org.apache.http.conn.ssl.SSLSocketFactory;
 
 @Grab(group='org.codehaus.groovy.modules.http-builder',
       module='http-builder',
-      version='0.7.1')
+      version='0.7.2')
 @Grab(group='org.yaml',
       module='snakeyaml',
       version='1.17')
@@ -40,6 +42,14 @@ cli.with {
     args:1, argName:'uri', type:String.class
   c longOpt: 'client-id', 'Client ID for API calls, any unique string (override)',
     args:1, argName:'id', type:String.class
+  k longOpt: 'keystore', 'The keystore file for ssl',
+    args:1, argName:'keystore', type:String.class
+  p longOpt: 'keypasswd', 'The password for the keystore',
+    args:1, argName:'keypasswd', type:String.class
+  u longOpt: 'truststore', 'The keystore file for ssl',
+    args:1, argName:'truststore', type:String.class
+  r longOpt: 'trustpasswd', 'The password for the truststore',
+    args:1, argName:'trustpasswd', type:String.class
 }
 
 def opts = cli.parse(args)
@@ -568,6 +578,25 @@ nifiHostPort = nifiHostPort.endsWith('/') ? nifiHostPort[0..-2] : nifiHostPort
 assert nifiHostPort : "No NiFI REST API endpoint provided"
 
 nifi = new RESTClient("$nifiHostPort/nifi-api/")
+
+if (nifiHostPort.startsWith("https")) {
+  // add keystore
+  def keyStore = KeyStore.getInstance( KeyStore.defaultType )
+  keyStore.load(new FileInputStream(opts.keystore), opts.keypasswd.toCharArray())
+  // add trustStore
+  SSLSocketFactory sf;
+  if (opts.truststore) {
+    def trustStore = KeyStore.getInstance( KeyStore.defaultType )
+    trustStore.load(new FileInputStream(opts.truststore), opts.trustpasswd.toCharArray())
+     sf = new SSLSocketFactory(keyStore, opts.keypasswd, trustStore)
+  } else {
+    sf = new SSLSocketFactory(keyStore)
+  }
+  sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER)
+
+  nifi.client.connectionManager.schemeRegistry.register(new Scheme("https", sf, 443))
+}
+
 nifi.handler.failure = { resp, data ->
     resp.setData(data?.text)
     println "[ERROR] HTTP call failed. Status code: $resp.statusLine: $resp.data"
