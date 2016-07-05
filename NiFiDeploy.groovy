@@ -48,8 +48,9 @@ cli.with {
     args:1, argName:'keypasswd', type:String.class
   u longOpt: 'truststore', 'The keystore file for ssl',
     args:1, argName:'truststore', type:String.class
-  r longOpt: 'trustpasswd', 'The password for the truststore',
-    args:1, argName:'trustpasswd', type:String.class
+  r longOpt: 'truststorePasswd', 'The password for the truststore',
+    args:1, argName:'truststorePasswd', type:String.class
+  o longOpt: 'noverify', 'Do not verify host names for SSL'
 }
 
 def opts = cli.parse(args)
@@ -587,13 +588,14 @@ if (nifiHostPort.startsWith("https")) {
   SSLSocketFactory sf;
   if (opts.truststore) {
     def trustStore = KeyStore.getInstance( KeyStore.defaultType )
-    trustStore.load(new FileInputStream(opts.truststore), opts.trustpasswd.toCharArray())
+    trustStore.load(new FileInputStream(opts.truststore), opts.truststorePasswd.toCharArray())
      sf = new SSLSocketFactory(keyStore, opts.keypasswd, trustStore)
   } else {
     sf = new SSLSocketFactory(keyStore)
   }
-  sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER)
-
+  if (opts.noverify) {
+    sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER)
+  }
   nifi.client.connectionManager.schemeRegistry.register(new Scheme("https", sf, 443))
 }
 
